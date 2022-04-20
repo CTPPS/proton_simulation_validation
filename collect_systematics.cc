@@ -137,11 +137,11 @@ int main(int argc, char **argv)
 		{ "alig-x-sym", "proton_reco_misalignment/misalignment_x_sym_validation.root", "proton_reco_misalignment/misalignment_none_validation.root" },
 		{ "alig-x-asym", "proton_reco_misalignment/misalignment_x_asym_validation.root", "proton_reco_misalignment/misalignment_none_validation.root" },
 		{ "alig-y-sym", "proton_reco_misalignment/misalignment_y_sym_validation.root", "proton_reco_misalignment/misalignment_none_validation.root" },
-                { "alig-y-asym", "proton_reco_misalignment/misalignment_y_asym_validation.root", "proton_reco_misalignment/misalignment_none_validation.root" },
+		{ "alig-y-asym", "proton_reco_misalignment/misalignment_y_asym_validation.root", "proton_reco_misalignment/misalignment_none_validation.root" },
 
 		{ "opt-Lx", "proton_reco_optics/optics_Lx_1_validation.root", "proton_reco_optics/optics_none_1_validation.root" },
 		{ "opt-Lpx", "proton_reco_optics/optics_Lpx_1_validation.root", "proton_reco_optics/optics_none_1_validation.root" },
-		{ "opt-Lpy", "proton_reco_optics/optics_Lpy_1_validation.root", "proton_reco_optics/optics_none_1_validation.root" },
+		{ "opt-Lpy", "proton_reco_optics/optics_Lpy_1_validation.root", "proton_reco_optics/optics_Lpx_1_validation.root"},
 		{ "opt-xd", "proton_reco_optics/optics_xd_1_validation.root", "proton_reco_optics/optics_none_1_validation.root" },
 	};
 
@@ -167,9 +167,13 @@ int main(int argc, char **argv)
 
 		printf("* %s\n", dn_el.c_str());
 
-		TDirectory *d_el = f_out->mkdir(dn_el.c_str());
+		TDirectory *d_el = f_out->mkdir((dn_el+"_xi_vs_xi").c_str());
+		TDirectory *d_el_t = f_out->mkdir((dn_el+"_t_vs_xi").c_str());
+                TDirectory *d_el_t_t = f_out->mkdir((dn_el+"_t_vs_t").c_str());
 
 		vector<TGraphErrors *> graphs;
+		vector<TGraphErrors *> graphs_t;
+                vector<TGraphErrors *> graphs_t_t;
 
 		for (const auto &sc : scenarios)
 		{
@@ -184,6 +188,10 @@ int main(int argc, char **argv)
 
 			TProfile *p_eff = (TProfile *) f_in_eff->Get((el + "/p_de_xi_vs_xi_simu").c_str());
 			TProfile *p_none = (TProfile *) f_in_none->Get((el + "/p_de_xi_vs_xi_simu").c_str());
+			TProfile *p_eff_t = (TProfile *) f_in_eff->Get((el + "/p_de_t_vs_xi_simu").c_str());
+                        TProfile *p_none_t = (TProfile *) f_in_none->Get((el + "/p_de_t_vs_xi_simu").c_str());
+			TProfile *p_eff_t_t = (TProfile *) f_in_eff->Get((el + "/p_de_t_vs_t_simu").c_str());
+                        TProfile *p_none_t_t = (TProfile *) f_in_none->Get((el + "/p_de_t_vs_t_simu").c_str());
 
 			if (!p_eff || !p_none)
 			{
@@ -195,9 +203,23 @@ int main(int argc, char **argv)
 
 			TGraphErrors *g_diff = MakeDiff(p_eff, p_none);
 			g_diff->Write(sc.name.c_str());
-
 			graphs.push_back(g_diff);
+
+			gDirectory = d_el_t;
+
+			TGraphErrors *g_diff_t = MakeDiff(p_eff_t, p_none_t);
+			g_diff_t->Write(sc.name.c_str());
+                        graphs_t.push_back(g_diff_t);
+
+			gDirectory = d_el_t_t;
+
+                        TGraphErrors *g_diff_t_t = MakeDiff(p_eff_t_t, p_none_t_t);
+                        g_diff_t_t->Write(sc.name.c_str());
+                        graphs_t_t.push_back(g_diff_t_t);
+
 		}
+
+		gDirectory = d_el;
 
 		if (!graphs.empty())
 		{
@@ -206,6 +228,28 @@ int main(int argc, char **argv)
 
 			MakeCorrelation(graphs)->Write("g2_correlation");
 		}
+
+		gDirectory = d_el_t;
+
+		if (!graphs_t.empty())
+                {
+                        TGraphErrors *g_comb_t = MakeCombination(graphs_t);
+                        g_comb_t->Write("combined");
+
+                        MakeCorrelation(graphs_t)->Write("g2_correlation");
+                }
+
+		gDirectory = d_el_t_t;
+
+                if (!graphs_t_t.empty())
+                {
+                        TGraphErrors *g_comb_t_t = MakeCombination(graphs_t_t);
+                        g_comb_t_t->Write("combined");
+
+                        MakeCorrelation(graphs_t_t)->Write("g2_correlation");
+                }
+
+
 	}
 
 	// clean up
